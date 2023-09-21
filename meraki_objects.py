@@ -63,7 +63,6 @@ def block_ip():
 
     for ip in open(f"{base_doc_path}/objs-to-block.txt"):
         block_ip = ip.replace('\n', "")
-#        pprint(block_ip)
 
         data = {
             "name": f"{vuln_name}-ip{n}",
@@ -85,7 +84,6 @@ def obj_group():
     obj_id_list = []
     for obj in get_objs.json():
         if vuln_name.lower() in obj.get('name').lower():
-#            pprint(f"{obj.get('name')} | {obj.get('id')}")
             obj_id_list.append(obj.get('id'))
 
     data = {
