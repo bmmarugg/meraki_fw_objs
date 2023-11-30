@@ -1,2 +1,7 @@
 === v1.0 | 2023-09-07 ===
     - Initial publish for redistribution
+
+
+=== v2.0 | 2023-11-17 ===
+    - Changed the script to append newly created objects to a pre-existing object group for fully autonomous blocking
+    - Added creation and editing of a backup file incase things go bad

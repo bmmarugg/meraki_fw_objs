@@ -1,19 +1,22 @@
 #!/usr/bin/python3
-# v1.0 | 2023-09-07
+# v2.0 | 2023-11-17
 
 import json
 import requests
 import urllib3
 from pprint import pprint
 import meraki
+from datetime import datetime
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Fill out the 'PATH/TO/' with your preferred documents directory location.
-base_doc_path = "PATH/TO/DOCUMENTS"
+base_doc_path = "PATH/TO/docs"
 
 with open(f"{base_doc_path}/creds.json") as creds:
     creds = json.load(creds)
+
+backup_file = open(f"{base_doc_path}/meraki_objs_backup.json", "a+")
 
 # The necessary REST headers needed to authenticate and pass data each and every time an API call is made.
 headers = {
@@ -24,7 +27,11 @@ headers = {
 
 # A variable that acts as a short-hand way to call the API URL. Makes for cleaner code
 base_url = f'https://api.meraki.com/api/v1/'
-dashboard = meraki.DashboardAPI(creds.get('meraki_api_token'))
+dashboard = meraki.DashboardAPI(
+    creds.get('meraki_api_token'),
+    output_log=False,
+    print_console=False
+)
 
 # Defines the location and file that will back up all of the currently existing objects in Meraki in .json format
 objects_backup_file = open(f'{base_doc_path}/current_objs.json', 'w')
@@ -79,20 +86,34 @@ def block_ip():
 
 # Creates a new object policy group and dynamically adds the
 def obj_group():
-    get_objs = requests.get(f"{base_url}/organizations/{org_id}/policyObjects", headers=headers, verify=False)
+    obj_group_name = input("\nType the name of the Object Group you're editing: \n")
 
-    obj_id_list = []
+    obj_groups = requests.get(f"{base_url}/organizations/{org_id}/policyObjects/groups",
+                              verify=False, headers=headers).json()
+
+    blocklist_entries = []
+    blocklist_id = {}
+    for entry in obj_groups:
+        if f"{obj_group_name}".lower() in entry.get('name').lower():
+            backup_file.write(f"\n\n===== {datetime.today()} =====\n")
+            json.dump(entry, backup_file, indent=4)
+            blocklist_id['id'] = entry.get('id')
+            for obj_id in entry.get('objectIds'):
+                blocklist_entries.append(obj_id)
+
+    get_objs = requests.get(f"{base_url}/organizations/{org_id}/policyObjects", headers=headers, verify=False)
     for obj in get_objs.json():
         if vuln_name.lower() in obj.get('name').lower():
-            obj_id_list.append(obj.get('id'))
+            blocklist_entries.append(obj.get('id'))
 
     data = {
-        "name": f"{vuln_name}-block",
-        "objectIds": obj_id_list
+        "name": f"{obj_group_name}".upper(),
+        "objectIds": blocklist_entries
     }
-    create_obj_group = requests.post(f"{base_url}/organizations/{org_id}/policyObjects/groups",
-                                     headers=headers, verify=False, data=json.dumps(data))
-    pprint(create_obj_group)
+
+    add_new = requests.put(f"{base_url}/organizations/{org_id}/policyObjects/groups/{blocklist_id.get('id')}",
+                           verify=False, headers=headers, data=json.dumps(data))
+    pprint(add_new)
 
 
 block_ip()
